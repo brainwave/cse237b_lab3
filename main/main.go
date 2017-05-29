@@ -1,7 +1,9 @@
 package main
 
 import (
+	c "constant"
 	"fmt"
+	"scheduler"
 	"task"
 	"time"
 )
@@ -28,29 +30,28 @@ func main() {
 	// Create all applications
 	for i, taskSpec := range taskSpecs {
 		apps = append(apps, task.NewApp(fmt.Sprintf("app%d", i), taskSpec))
+
 	}
 
-	/*
-		// Create and initialize the scheduler
-		sched := scheduler.NewScheduler()
-		// To be implemented, initialization process
+	// Create and initialize the scheduler
+	sched := scheduler.NewScheduler()
+	// To be implemented, initialization process
 
-		// Start the scheduler
-		sched.Start()
+	// Start the scheduler
+	sched.Start()
 
-		// Start all applications
-		for _, app := range apps {
-			app.Start()
-		}
+	// Start all applications
+	for _, app := range apps {
+		app.Start()
+	}
 
-		time.Sleep(c.TEST_TIME)
+	time.Sleep(c.TEST_TIME)
 
-		// Stop all applications
-		for _, app := range apps {
-			app.Stop()
-		}
+	// Stop all applications
+	for _, app := range apps {
+		app.Stop()
+	}
 
-		// Stop the scheduler
-		sched.Stop()
-	*/
+	// Stop the scheduler
+	sched.Stop()
 }

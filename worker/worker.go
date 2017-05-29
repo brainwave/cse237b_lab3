@@ -31,7 +31,7 @@ loop:
 		select {
 		case t := <-w.TaskChan:
 			// This worker receives a new task to run
-			// To be implemented
+			log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 		case <-w.StopChan:
 			// Receive signal to stop
 			// To be implemented
