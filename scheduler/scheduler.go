@@ -16,11 +16,12 @@ type Scheduler struct {
 	TaskBuf       *worker.TaskQueue
 }
 
-func NewScheduler() *Scheduler {
-	return &Scheduler{
+func NewScheduler(t chan *task.Task, w chan *worker.Worker) *Scheduler {
+	log.Printf("Creating new scheduler\n")
 
-		TaskChan:   make(chan *task.Task),
-		WorkerChan: make(chan *worker.Worker),
+	return &Scheduler{
+		TaskChan:   t,
+		WorkerChan: w,
 		StopChan:   make(chan interface{}),
 	}
 }
@@ -28,7 +29,7 @@ func NewScheduler() *Scheduler {
 // ScheduleLoop runs the scheduling algorithm inside a goroutine
 func (s *Scheduler) ScheduleLoop() {
 	log.Printf("Scheduler: Scheduling loop starts\n")
-	//loop:
+loop:
 	for {
 		select {
 		case newTask := <-s.TaskChan:
@@ -40,6 +41,7 @@ func (s *Scheduler) ScheduleLoop() {
 		case <-s.StopChan:
 			// Receive signal to stop scheduling
 			log.Printf("Scheduler: Stop Signal\n")
+			break loop
 		}
 	}
 	log.Printf("Scheduler: Task processor ends\n")

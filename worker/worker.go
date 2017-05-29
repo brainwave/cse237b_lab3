@@ -4,6 +4,7 @@ import (
 	"log"
 	"sync"
 	"task"
+	"time"
 )
 
 type TaskQueue struct {
@@ -46,5 +47,6 @@ func (w *Worker) Process(t *task.Task) {
 	log.Printf("Worker <%d>: App<%s>/Task<%d> starts (ddl %v)\n", w.WorkerID, t.AppID, t.TaskID, t.Deadline)
 	// Process the task
 	// To be implemented
+	time.Sleep(t.TotalRunTime)
 	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 }

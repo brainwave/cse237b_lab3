@@ -35,14 +35,14 @@ type App struct {
 }
 
 // NewApp creates a new application
-func NewApp(appID string, spec TaskSpec) *App {
+func NewApp(appID string, spec TaskSpec, tsk chan *Task) *App {
 	return &App{
 		AppID:     appID,
 		TaskID:    0,
 		Spec:      spec,
 		TaskTimer: nil,
 		StopChan:  make(chan interface{}),
-		TaskChan:  nil,
+		TaskChan:  tsk,
 	}
 }
 
@@ -64,7 +64,7 @@ func (a *App) NewTask(startTime time.Time) (task *Task) {
 // TaskGenerateLoop runs inside a goroutine to generate tasks periodically
 func (a *App) TaskGenerateLoop() {
 	if a.StopChan == nil {
-		log.Fatalf("App<%s>: Task channel not assigned\n", a.AppID)
+		log.Fatalf("App<%s>: Stop channel not assigned\n", a.AppID)
 	}
 	log.Printf("App<%s>: Task generator starts\n", a.AppID)
 	a.TaskTimer = time.NewTicker(a.Spec.Period)
@@ -79,6 +79,7 @@ loop:
 			a.TaskChan <- t
 		case <-a.StopChan:
 			// receive signal to stop creating tasks
+			log.Printf("App<%s>: Stopped task creation\n", a.AppID)
 			break loop
 		}
 	}

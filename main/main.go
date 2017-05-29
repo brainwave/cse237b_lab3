@@ -3,9 +3,11 @@ package main
 import (
 	c "constant"
 	"fmt"
+	"log"
 	"scheduler"
 	"task"
 	"time"
+	"worker"
 )
 
 func main() {
@@ -28,13 +30,19 @@ func main() {
 	}
 
 	// Create all applications
-	for i, taskSpec := range taskSpecs {
-		apps = append(apps, task.NewApp(fmt.Sprintf("app%d", i), taskSpec))
+	TaskChan := make(chan *task.Task)
+	WorkerChan := make(chan *worker.Worker)
 
+	for i, taskSpec := range taskSpecs {
+		apps = append(apps, task.NewApp(fmt.Sprintf("app%d", i), taskSpec, TaskChan))
 	}
 
 	// Create and initialize the scheduler
-	sched := scheduler.NewScheduler()
+	sched := scheduler.NewScheduler(TaskChan, WorkerChan)
+
+	if sched == nil {
+		log.Fatalf("Failed to create scheduler\n")
+	}
 	// To be implemented, initialization process
 
 	// Start the scheduler
