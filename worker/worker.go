@@ -53,3 +53,15 @@ func (w *Worker) Process(t *task.Task) {
 	time.Sleep(t.TotalRunTime)
 	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 }
+
+func (tq TaskQueue) Less(i, j int) bool {
+	return (tq.Queue[i].Deadline.Before(tq.Queue[j].Deadline))
+}
+
+func (tq TaskQueue) Swap(i, j int) {
+	tq.Queue[i], tq.Queue[j] = tq.Queue[j], tq.Queue[i]
+}
+
+func (tq TaskQueue) Len() int {
+	return (len(tq.Queue))
+}

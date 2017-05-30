@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"log"
+	"sort"
 	"task"
 	"worker"
 )
@@ -43,6 +44,7 @@ loop:
 		case newTask := <-s.TaskChan:
 			// Receive a new task and do scheduling
 			s.TaskBuf.Queue = append(s.TaskBuf.Queue, newTask)
+			sort.Sort(s.TaskBuf)
 
 			TaskLen := len(s.TaskBuf.Queue) - 1
 			WrkrLen := len(s.FreeWorkerBuf.Pool) - 1
@@ -57,7 +59,7 @@ loop:
 				s.TaskBuf.Queue = s.TaskBuf.Queue[:TaskLen]
 
 				//(1) indicates that the handover was caused by new task
-				log.Printf("Scheduler: Task Handover Complete(1)\n")
+				log.Printf("Scheduler: Task Handover Complete(1), Queue Length %d\n", len(s.TaskBuf.Queue))
 
 			}
 
@@ -79,7 +81,7 @@ loop:
 				s.TaskBuf.Queue = s.TaskBuf.Queue[:TaskLen]
 
 				//(2) indicates that the handover was caused by worker becoming free
-				log.Printf("Scheduler: Task Handover Complete(2)\n")
+				log.Printf("Scheduler: Task Handover Complete(2), Queue Length %d\n", len(s.TaskBuf.Queue))
 			}
 
 		case <-s.StopChan:
@@ -122,3 +124,20 @@ func (s *Scheduler) Stop() {
 		w.StopChan <- 0
 	}
 }
+
+/* Heap implementation, deferred to later
+func (tq worker.TaskQueue) Less(i, j int) bool {
+	return (tq.Queue[i].Deadline.Before(tq.Queue[j].Deadline))
+}
+
+func (tq worker.TaskQueue) Push(newTask task.Task) {
+	tq.Queue = append(tq.Queue, newTask)
+	log.Printf("Scheduler: Heap - Task%d, %s inserted\n", newTask.TaskID, newTask.AppID)
+}
+
+func (tq worker.TaskQueue) Pop() worker.TaskQueue {
+	tqlen = len(tq.Queue) - 1
+	log.Printf("Scheduler: Heap - Task%d, %s removed\n", tq.Queue[tqlen].TaskID, tq.Queue[tqlen].AppID)
+	tq.Queue = tq.Queue[:tqlen]
+}
+*/
