@@ -33,6 +33,8 @@ func main() {
 	TaskChan := make(chan *task.Task)
 	WorkerChan := make(chan *worker.Worker)
 
+	//Send all created workers to the worker channel, indicating they are free at beginning of program execution
+
 	for i, taskSpec := range taskSpecs {
 		apps = append(apps, task.NewApp(fmt.Sprintf("app%d", i), taskSpec, TaskChan))
 	}

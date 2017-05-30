@@ -19,9 +19,10 @@ type WorkerPool struct {
 
 // Worker is the agent to process tasks
 type Worker struct {
-	WorkerID int
-	TaskChan chan *task.Task
-	StopChan chan interface{}
+	WorkerID   int
+	TaskChan   chan *task.Task
+	WorkerChan chan *Worker
+	StopChan   chan interface{}
 }
 
 // TaskProcessLoop processes tasks without preemption
@@ -32,7 +33,11 @@ loop:
 		select {
 		case t := <-w.TaskChan:
 			// This worker receives a new task to run
+			w.Process(t)
 			log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
+			log.Printf("Conveying worker %d state to channel", w.WorkerID)
+			w.WorkerChan <- w
+
 		case <-w.StopChan:
 			// Receive signal to stop
 			// To be implemented
@@ -44,9 +49,7 @@ loop:
 
 // Process runs a task on a worker without preemption
 func (w *Worker) Process(t *task.Task) {
-	log.Printf("Worker <%d>: App<%s>/Task<%d> starts (ddl %v)\n", w.WorkerID, t.AppID, t.TaskID, t.Deadline)
 	// Process the task
-	// To be implemented
 	time.Sleep(t.TotalRunTime)
 	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 }
