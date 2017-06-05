@@ -75,7 +75,7 @@ loop:
 			// Timer timeouts, create a new task
 			startTime := time.Now()
 			t := a.NewTask(startTime)
-			log.Printf("App<%s>: Create task<%d>\n", a.AppID, t.TaskID)
+			log.Printf("App<%s>: Create task<%d>, ddl %v\n", a.AppID, t.TaskID, t.Deadline)
 			a.TaskChan <- t
 		case <-a.StopChan:
 			// receive signal to stop creating tasks

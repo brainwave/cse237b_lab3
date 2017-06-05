@@ -49,10 +49,16 @@ loop:
 			TaskLen := len(s.TaskBuf.Queue) - 1
 			WrkrLen := len(s.FreeWorkerBuf.Pool) - 1
 
-			log.Printf("Scheduler: Task Recieved, task%d %s, inserted. Queue Len: %d\n", newTask.TaskID, newTask.AppID, TaskLen+1)
+			log.Printf("Scheduler: Task Recieved, task%d %s, inserted. TaskQueue Len: %d\n", newTask.TaskID, newTask.AppID, TaskLen+1)
+
+			for i, qIter := range s.TaskBuf.Queue {
+				if i != 0 && s.TaskBuf.Queue[i-1].Deadline.Before(qIter.Deadline) {
+					log.Fatalf("Scheduling error")
+				}
+			}
 
 			if TaskLen >= 0 && WrkrLen >= 0 {
-				log.Printf("Scheduler: Task Handover, task%d %s -> %d\n", s.TaskBuf.Queue[TaskLen].TaskID, s.TaskBuf.Queue[TaskLen].AppID, s.FreeWorkerBuf.Pool[WrkrLen].WorkerID)
+				log.Printf("Scheduler: Task Handover, task%d %s -> Worker %d\n", s.TaskBuf.Queue[TaskLen].TaskID, s.TaskBuf.Queue[TaskLen].AppID, s.FreeWorkerBuf.Pool[WrkrLen].WorkerID)
 
 				s.FreeWorkerBuf.Pool[WrkrLen].TaskChan <- s.TaskBuf.Queue[TaskLen]
 				s.FreeWorkerBuf.Pool = s.FreeWorkerBuf.Pool[:WrkrLen]
@@ -64,12 +70,13 @@ loop:
 			}
 
 		case w := <-s.WorkerChan:
+
 			// Assign the worker a new task, and remove the task from queue
 			TaskLen := len(s.TaskBuf.Queue) - 1
 			WrkrLen := len(s.FreeWorkerBuf.Pool) - 1
 
 			s.FreeWorkerBuf.Pool = append(s.FreeWorkerBuf.Pool, w)
-			log.Printf("Scheduler: Worker %d free, inserted. num free workers: %d", w.WorkerID, WrkrLen+1)
+			log.Printf("Scheduler: Worker %d free, inserted. num free workers: %d", w.WorkerID, len(s.FreeWorkerBuf.Pool))
 
 			if TaskLen >= 0 && WrkrLen >= 0 {
 

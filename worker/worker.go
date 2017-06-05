@@ -33,9 +33,10 @@ loop:
 		select {
 		case t := <-w.TaskChan:
 			// This worker receives a new task to run
+			log.Printf("Worker <%d>: Recieved task, App<%s>/Task<%d>. Processing...\n", w.WorkerID, t.AppID, t.TaskID)
 			w.Process(t)
 			log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
-			log.Printf("Conveying worker %d state to channel", w.WorkerID)
+			log.Printf("Conveying worker %d state change busy -> free to scheduler", w.WorkerID)
 			w.WorkerChan <- w
 
 		case <-w.StopChan:
@@ -54,8 +55,15 @@ func (w *Worker) Process(t *task.Task) {
 	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 }
 
+// Process runs a task on a worker without preemption
+func (w *Worker) ProcessPreempt(t *task.Task) {
+	// Process the task
+	time.Sleep(t.TotalRunTime)
+	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
+}
+
 func (tq TaskQueue) Less(i, j int) bool {
-	return (tq.Queue[i].Deadline.Before(tq.Queue[j].Deadline))
+	return (tq.Queue[i].Deadline.After(tq.Queue[j].Deadline))
 }
 
 func (tq TaskQueue) Swap(i, j int) {
