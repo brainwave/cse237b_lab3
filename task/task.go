@@ -64,9 +64,9 @@ func (a *App) NewTask(startTime time.Time) (task *Task) {
 // TaskGenerateLoop runs inside a goroutine to generate tasks periodically
 func (a *App) TaskGenerateLoop() {
 	if a.StopChan == nil {
-		log.Fatalf("App<%s>: Stop channel not assigned\n", a.AppID)
+		log.Fatalf("%s: Stop channel not assigned\n", a.AppID)
 	}
-	log.Printf("App<%s>: Task generator starts\n", a.AppID)
+	log.Printf("%s: Task generator starts\n", a.AppID)
 	a.TaskTimer = time.NewTicker(a.Spec.Period)
 loop:
 	for {
@@ -75,16 +75,17 @@ loop:
 			// Timer timeouts, create a new task
 			startTime := time.Now()
 			t := a.NewTask(startTime)
-			log.Printf("App<%s>: Create task<%d>, ddl %v\n", a.AppID, t.TaskID, t.Deadline)
+			log.Printf("%s>: Create task<%d>, rt %v, ddl %v, \n", a.AppID, t.TaskID, t.TotalRunTime, t.Deadline)
 			a.TaskChan <- t
+
 		case <-a.StopChan:
 			// receive signal to stop creating tasks
-			log.Printf("App<%s>: Stopped task creation\n", a.AppID)
+			log.Printf("%s: Stopped task creation\n", a.AppID)
 			break loop
 		}
 	}
 	a.TaskTimer.Stop()
-	log.Printf("App<%s>: Task generator ends\n", a.AppID)
+	log.Printf("%s: Task generator ends\n", a.AppID)
 }
 
 // Start starts this application

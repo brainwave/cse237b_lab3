@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"constant"
 	"log"
 	"sort"
 	"task"
@@ -50,29 +51,37 @@ loop:
 			TaskLen := len(s.TaskBuf.Queue) - 1
 			WrkrLen := len(s.FreeWorkerBuf.Pool) - 1
 
-			log.Printf("Scheduler: Task Recieved, task%d %s, inserted. TaskQueue Len: %d\n", newTask.TaskID, newTask.AppID, TaskLen+1)
-
 			for i, qIter := range s.TaskBuf.Queue {
 				if i != 0 && s.TaskBuf.Queue[i-1].Deadline.Before(qIter.Deadline) {
 					log.Fatalf("Scheduling error")
 				}
 			}
+			log.Printf("Scheduler: New Task: %s.Task%d. TaskQueue Len: %d\n", newTask.AppID, newTask.TaskID, TaskLen+1)
 
 			if TaskLen >= 0 {
-
 				if WrkrLen >= 0 {
-					log.Printf("Scheduler: Task Handover (task%d %s -> Worker %d)\n", s.TaskBuf.Queue[TaskLen].TaskID, s.TaskBuf.Queue[TaskLen].AppID, s.FreeWorkerBuf.Pool[WrkrLen].WorkerID)
+					log.Printf("Scheduler: %s.Task%d -> Worker %d)\n", s.TaskBuf.Queue[TaskLen].AppID, s.TaskBuf.Queue[TaskLen].TaskID, s.FreeWorkerBuf.Pool[WrkrLen].WorkerID)
 
 					s.FreeWorkerBuf.Pool[WrkrLen].TaskChan <- s.TaskBuf.Queue[TaskLen]
 					s.FreeWorkerBuf.Pool = s.FreeWorkerBuf.Pool[:WrkrLen]
 					s.TaskBuf.Queue = s.TaskBuf.Queue[:TaskLen]
 
 					//(1) indicates that the handover was caused by new task
-					log.Printf("Scheduler: Task Handover Complete(1), Queue Length %d\n", len(s.TaskBuf.Queue))
+					//log.Printf("Scheduler: Task Handover Complete(1), Queue Length %d\n", len(s.TaskBuf.Queue))
 				} else {
 					for _, wrkr := range s.AllWorkerBuf.Pool {
-						if s.TaskBuf.Queue[TaskLen].Deadline.After(newTask.Deadline) {
+						log.Printf("Deadline current task: %v\n", wrkr.CurTask.Deadline)
+						log.Printf("Deadline new task: %v\n", newTask.Deadline)
+
+						log.Printf("workers busy\n")
+						if wrkr.CurTask.Deadline.After(newTask.Deadline) {
+							log.Printf("Worker %d executing %s.Task%d, preempted for %s.Task%d\n", wrkr.WorkerID, wrkr.CurTask.AppID, wrkr.CurTask.TaskID, newTask.AppID, newTask.TaskID)
+
+							s.TaskBuf.Queue = append(s.TaskBuf.Queue, wrkr.CurTask)
 							wrkr.PreEmptFlag = true
+
+							sort.Sort(s.TaskBuf)
+							break
 						}
 					}
 				}
@@ -82,23 +91,24 @@ loop:
 		case w := <-s.WorkerChan:
 
 			// Assign the worker a new task, and remove the task from queue
+			s.FreeWorkerBuf.Pool = append(s.FreeWorkerBuf.Pool, w)
+
 			TaskLen := len(s.TaskBuf.Queue) - 1
 			WrkrLen := len(s.FreeWorkerBuf.Pool) - 1
 
-			s.FreeWorkerBuf.Pool = append(s.FreeWorkerBuf.Pool, w)
-			log.Printf("Scheduler: Worker %d free, inserted. num free workers: %d", w.WorkerID, len(s.FreeWorkerBuf.Pool))
+			//log.Printf("Scheduler: Worker %d free, inserted. num free workers: %d", w.WorkerID, len(s.FreeWorkerBuf.Pool))
 
 			if TaskLen >= 0 && WrkrLen >= 0 {
 
-				log.Printf("Scheduler: Task Handover: task%d, %s -> Worker %d\n", s.TaskBuf.Queue[TaskLen].TaskID,
-					s.TaskBuf.Queue[TaskLen].AppID, w.WorkerID)
+				log.Printf("Scheduler: %s.Task%d->Worker %d\n",
+					s.TaskBuf.Queue[TaskLen].AppID, s.TaskBuf.Queue[TaskLen].TaskID, w.WorkerID)
 
-				s.FreeWorkerBuf.Pool[WrkrLen-1].TaskChan <- s.TaskBuf.Queue[TaskLen]
+				s.FreeWorkerBuf.Pool[WrkrLen].TaskChan <- s.TaskBuf.Queue[TaskLen]
 				s.FreeWorkerBuf.Pool = s.FreeWorkerBuf.Pool[:WrkrLen]
 				s.TaskBuf.Queue = s.TaskBuf.Queue[:TaskLen]
 
 				//(2) indicates that the handover was caused by worker becoming free
-				log.Printf("Scheduler: Task Handover Complete(2), Queue Length %d\n", len(s.TaskBuf.Queue))
+				//	log.Printf("Scheduler: Task Handover Complete(2), Queue Length %d\n", len(s.TaskBuf.Queue))
 			}
 
 		case <-s.StopChan:
@@ -114,32 +124,33 @@ loop:
 
 // Start starts the scheduler
 func (s *Scheduler) Start() {
-	i := 0
 
 	go s.ScheduleLoop()
 
-	s.FreeWorkerBuf.Pool = append(s.FreeWorkerBuf.Pool, new(worker.Worker))
-	s.FreeWorkerBuf.Pool = append(s.FreeWorkerBuf.Pool, new(worker.Worker))
-
-	for _, wrkr := range s.FreeWorkerBuf.Pool {
-		wrkr.WorkerID = i
+	for iter := 1; iter <= constant.WORKER_NR; iter++ {
+		//Create new workers as per constants file
+		wrkr := new(worker.Worker)
+		wrkr.WorkerID = iter
 		wrkr.TaskChan = make(chan *task.Task)
 		wrkr.WorkerChan = s.WorkerChan
 
-		go wrkr.TaskProcessLoop()
-		i = i + 1
-	}
+		//Add them to worker pool
+		s.FreeWorkerBuf.Pool = append(s.FreeWorkerBuf.Pool, wrkr)
+		s.AllWorkerBuf.Pool = append(s.AllWorkerBuf.Pool, wrkr)
 
-	s.AllWorkerBuf = s.FreeWorkerBuf
+		go wrkr.TaskProcessLoop()
+	}
 
 }
 
 // Stop stops the scheduler
 func (s *Scheduler) Stop() {
-	s.StopChan <- 0
+
 	for _, w := range s.AllWorkerBuf.Pool {
 		w.StopChan <- 0
 	}
+
+	s.StopChan <- 0
 }
 
 /* Heap implementation, deferred to later

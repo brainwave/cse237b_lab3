@@ -36,16 +36,24 @@ loop:
 		select {
 		case t := <-w.TaskChan:
 			// This worker receives a new task to run
-			log.Printf("Worker <%d>: Recieved task, App<%s>/Task<%d>. Processing...\n", w.WorkerID, t.AppID, t.TaskID)
 			w.CurTask = t
-			w.Process(t)
-			log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
-			log.Printf("Conveying worker %d state change busy -> free to scheduler", w.WorkerID)
+
+			if t.RunTime == time.Duration(0) {
+				log.Printf("Worker <%d>: Recieved task, <%s>.Task<%d>. Processing...\n", w.WorkerID, t.AppID, t.TaskID)
+			} else {
+				log.Printf("Worker <%d>: %s.Task<%d> RESUMED\n", w.WorkerID, t.AppID, t.TaskID)
+			}
+
+			if constant.EN_PREEMPT == true {
+				w.ProcessPreempt(t)
+			} else {
+				w.Process(t)
+			}
+
 			w.WorkerChan <- w
 
 		case <-w.StopChan:
 			// Receive signal to stop
-			// To be implemented
 			break loop
 		}
 	}
@@ -56,7 +64,8 @@ loop:
 func (w *Worker) Process(t *task.Task) {
 	// Process the task
 	time.Sleep(t.TotalRunTime)
-	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
+	log.Printf("Worker <%d>: %s.Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
+
 }
 
 // Process runs a task on a worker with preemption
@@ -65,15 +74,20 @@ func (w *Worker) ProcessPreempt(t *task.Task) {
 	for {
 		time.Sleep(constant.CHECK_PREEMPT_INTERVAL)
 		t.RunTime += constant.CHECK_PREEMPT_INTERVAL
+
+		//snapshot the task in execution
+		w.CurTask = t
+
 		if t.RunTime >= t.TotalRunTime {
-			// task is done
+			log.Printf("Worker <%d>: %s.Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
+			break
+		} else if w.PreEmptFlag == true && t.RunTime >= time.Duration(0) {
+			log.Printf("%s.Task%d PAUSED, %v executed\n", w.CurTask.AppID, w.CurTask.TaskID, t.RunTime)
+			w.PreEmptFlag = false
 			break
 		}
-		if w.PreEmptFlag == true {
-			// this worker is preempted
-		}
 	}
-	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
+
 }
 
 func (tq TaskQueue) Less(i, j int) bool {

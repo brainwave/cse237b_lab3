@@ -6,7 +6,7 @@ const (
 	// Number of workers
 	WORKER_NR = 1
 	// The total time of running the test
-	TEST_TIME = 20 * time.Second
+	TEST_TIME = 10 * time.Second
 	// The size of the input task channels
 	TASK_CHAN_SIZE = 10
 	// Switch on/off preemption of the scheduler
