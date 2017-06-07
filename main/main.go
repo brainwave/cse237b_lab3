@@ -16,16 +16,17 @@ func main() {
 	// Task specifications
 	taskSpecs := []task.TaskSpec{
 		task.TaskSpec{
-			Period:           4 * time.Second,
-			TotalRunTimeMean: 1 * time.Second,
-			TotalRunTimeStd:  300 * time.Millisecond,
-			RelativeDeadline: 3 * time.Second,
-		},
-		task.TaskSpec{
 			Period:           2 * time.Second,
 			TotalRunTimeMean: 1 * time.Second,
-			TotalRunTimeStd:  300 * time.Millisecond,
-			RelativeDeadline: 2 * time.Second,
+			TotalRunTimeStd:  0,
+			RelativeDeadline: 20 * time.Second,
+		},
+
+		task.TaskSpec{
+			Period:           8 * time.Second,
+			TotalRunTimeMean: 2 * time.Second,
+			TotalRunTimeStd:  100 * time.Millisecond,
+			RelativeDeadline: 4 * time.Second,
 		},
 	}
 
