@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"constant"
 	"log"
 	"sync"
 	"task"
@@ -19,10 +20,12 @@ type WorkerPool struct {
 
 // Worker is the agent to process tasks
 type Worker struct {
-	WorkerID   int
-	TaskChan   chan *task.Task
-	WorkerChan chan *Worker
-	StopChan   chan interface{}
+	WorkerID    int
+	TaskChan    chan *task.Task
+	WorkerChan  chan *Worker
+	StopChan    chan interface{}
+	CurTask     *task.Task
+	PreEmptFlag bool
 }
 
 // TaskProcessLoop processes tasks without preemption
@@ -34,6 +37,7 @@ loop:
 		case t := <-w.TaskChan:
 			// This worker receives a new task to run
 			log.Printf("Worker <%d>: Recieved task, App<%s>/Task<%d>. Processing...\n", w.WorkerID, t.AppID, t.TaskID)
+			w.CurTask = t
 			w.Process(t)
 			log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 			log.Printf("Conveying worker %d state change busy -> free to scheduler", w.WorkerID)
@@ -55,10 +59,20 @@ func (w *Worker) Process(t *task.Task) {
 	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 }
 
-// Process runs a task on a worker without preemption
+// Process runs a task on a worker with preemption
 func (w *Worker) ProcessPreempt(t *task.Task) {
 	// Process the task
-	time.Sleep(t.TotalRunTime)
+	for {
+		time.Sleep(constant.CHECK_PREEMPT_INTERVAL)
+		t.RunTime += constant.CHECK_PREEMPT_INTERVAL
+		if t.RunTime >= t.TotalRunTime {
+			// task is done
+			break
+		}
+		if w.PreEmptFlag == true {
+			// this worker is preempted
+		}
+	}
 	log.Printf("Worker <%d>: App<%s>/Task<%d> ends\n", w.WorkerID, t.AppID, t.TaskID)
 }
 

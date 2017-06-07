@@ -31,7 +31,7 @@ func NewScheduler(t chan *task.Task, w chan *worker.Worker) *Scheduler {
 		TaskBuf:       &worker.TaskQueue{},
 	}
 
-	log.Println("Done starting scheduler")
+	log.Println("Scheduler started")
 	return &sched
 }
 
@@ -42,6 +42,7 @@ loop:
 	for {
 		select {
 		case newTask := <-s.TaskChan:
+
 			// Receive a new task and do scheduling
 			s.TaskBuf.Queue = append(s.TaskBuf.Queue, newTask)
 			sort.Sort(s.TaskBuf)
@@ -57,15 +58,24 @@ loop:
 				}
 			}
 
-			if TaskLen >= 0 && WrkrLen >= 0 {
-				log.Printf("Scheduler: Task Handover, task%d %s -> Worker %d\n", s.TaskBuf.Queue[TaskLen].TaskID, s.TaskBuf.Queue[TaskLen].AppID, s.FreeWorkerBuf.Pool[WrkrLen].WorkerID)
+			if TaskLen >= 0 {
 
-				s.FreeWorkerBuf.Pool[WrkrLen].TaskChan <- s.TaskBuf.Queue[TaskLen]
-				s.FreeWorkerBuf.Pool = s.FreeWorkerBuf.Pool[:WrkrLen]
-				s.TaskBuf.Queue = s.TaskBuf.Queue[:TaskLen]
+				if WrkrLen >= 0 {
+					log.Printf("Scheduler: Task Handover (task%d %s -> Worker %d)\n", s.TaskBuf.Queue[TaskLen].TaskID, s.TaskBuf.Queue[TaskLen].AppID, s.FreeWorkerBuf.Pool[WrkrLen].WorkerID)
 
-				//(1) indicates that the handover was caused by new task
-				log.Printf("Scheduler: Task Handover Complete(1), Queue Length %d\n", len(s.TaskBuf.Queue))
+					s.FreeWorkerBuf.Pool[WrkrLen].TaskChan <- s.TaskBuf.Queue[TaskLen]
+					s.FreeWorkerBuf.Pool = s.FreeWorkerBuf.Pool[:WrkrLen]
+					s.TaskBuf.Queue = s.TaskBuf.Queue[:TaskLen]
+
+					//(1) indicates that the handover was caused by new task
+					log.Printf("Scheduler: Task Handover Complete(1), Queue Length %d\n", len(s.TaskBuf.Queue))
+				} else {
+					for _, wrkr := range s.AllWorkerBuf.Pool {
+						if s.TaskBuf.Queue[TaskLen].Deadline.After(newTask.Deadline) {
+							wrkr.PreEmptFlag = true
+						}
+					}
+				}
 
 			}
 
